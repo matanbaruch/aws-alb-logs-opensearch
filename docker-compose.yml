@@ -34,8 +34,8 @@ services:
       dockerfile: Dockerfile-logstash.yml
     volumes:
       - ~/.aws:/usr/share/logstash/.aws
-      - ./config/logstash/logstash.conf:/usr/share/logstash/pipeline/logstash.conf
-      - ./config/logstash/logstash.yml:/usr/share/logstash/config/logstash.yml
+      - ./logstash.conf:/usr/share/logstash/pipeline/logstash.conf
+      - ./logstash.yml:/usr/share/logstash/config/logstash.yml
     environment:
       OPENSEARCH_HOST: 'opensearch-node'
       OPENSEARCH_PORT: '9200'
