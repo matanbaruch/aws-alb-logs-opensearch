@@ -1,0 +1,76 @@
+version: '3'
+services:
+  opensearch-node:
+    image: opensearchproject/opensearch:latest
+    container_name: opensearch-node
+    environment:
+      cluster.name: 'opensearch-cluster'
+      node.name: 'opensearch-node'
+      discovery.seed_hosts: 'opensearch-node'
+      cluster.initial_cluster_manager_nodes: 'opensearch-node'
+      bootstrap.memory_lock: 'true'
+      OPENSEARCH_JAVA_OPTS: '-Xms512m -Xmx512m'
+      DISABLE_INSTALL_DEMO_CONFIG: 'true'
+      DISABLE_SECURITY_PLUGIN: 'true'
+    ulimits:
+      memlock:
+        soft: -1
+        hard: -1
+      nofile:
+        soft: 65536
+        hard: 65536
+    ports:
+      - 9200:9200
+      - 9600:9600
+    healthcheck:
+      test: ["CMD", "curl", "-s", "-f", "http://localhost:9200"]
+      interval: 1s
+      timeout: 5s
+      retries: 60
+
+  logstash:
+    container_name: logstash
+    build:
+      dockerfile: Dockerfile-logstash.yml
+    volumes:
+      - ~/.aws:/usr/share/logstash/.aws
+      - ./config/logstash/logstash.conf:/usr/share/logstash/pipeline/logstash.conf
+      - ./config/logstash/logstash.yml:/usr/share/logstash/config/logstash.yml
+    environment:
+      OPENSEARCH_HOST: 'opensearch-node'
+      OPENSEARCH_PORT: '9200'
+      BUCKET_NAME: 'cf-templates-1fw7znsbv28cv-us-west-2'
+      BUCKET_PREFIX: 'AWSLogs/99999999999/elasticloadbalancing/'
+      BUCKET_REGION: 'us-west-2'
+      AWS_SHARED_CREDENTIALS_FILE: '/usr/share/logstash/.aws/credentials'
+    depends_on:
+      opensearch-node:
+        condition: service_healthy
+
+  opensearch-dashboards:
+    image: opensearchproject/opensearch-dashboards:latest
+    container_name: opensearch-dashboards
+    ports:
+      - 5601:5601
+    expose:
+      - "5601"
+    environment:
+      OPENSEARCH_HOSTS: '["http://opensearch-node:9200"]'
+      DISABLE_SECURITY_DASHBOARDS_PLUGIN: true
+    depends_on:
+      opensearch-node:
+        condition: service_healthy
+    healthcheck:
+        test: ["CMD", "curl", "-s", "-f", "http://localhost:5601"]
+        interval: 1s
+        timeout: 5s
+        retries: 60
+
+  healthcheck:
+    image: busybox
+    container_name: healthcheck
+    depends_on:
+      - opensearch-node
+      - opensearch-dashboards
+      - logstash
+    command: /bin/sh -c "while true; do sleep 30; done;"
