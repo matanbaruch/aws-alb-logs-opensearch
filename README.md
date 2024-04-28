@@ -22,7 +22,7 @@ aws_secret_access_key = YOUR_SECRET_KEY
 3. Run the following command to start the containers:
 
 ```
-docker-compose up -d
+docker-compose up -d --wait
 ```
 
 This will start the following services:
